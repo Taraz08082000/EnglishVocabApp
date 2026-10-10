@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -35,6 +36,7 @@ fun FoldersScreen(
     var folders by remember { mutableStateOf(repository.getFolders()) }
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showQuickTranslateDialog by remember { mutableStateOf(false) }
 
     fun refreshFolders() {
         folders = repository.getFolders()
@@ -63,6 +65,21 @@ fun FoldersScreen(
                     }
                 },
                 actions = {
+                    // Quick Translator Icon Button
+                    IconButton(
+                        onClick = { showQuickTranslateDialog = true },
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = "Аудармашы",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+
                     // Daily Streak Badge
                     Surface(
                         shape = RoundedCornerShape(20.dp),
@@ -211,6 +228,94 @@ fun FoldersScreen(
             }
         )
     }
+
+    if (showQuickTranslateDialog) {
+        QuickTranslateDialog(
+            folders = folders,
+            onDismiss = { showQuickTranslateDialog = false },
+            onSaveToFolder = { selectedFolderId, eng, kaz ->
+                repository.addWord(selectedFolderId, eng, kaz)
+                refreshFolders()
+                showQuickTranslateDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun QuickTranslateDialog(
+    folders: List<Folder>,
+    onDismiss: () -> Unit,
+    onSaveToFolder: (String, String, String) -> Unit
+) {
+    var englishWord by remember { mutableStateOf("") }
+    var kazakhWord by remember { mutableStateOf("") }
+    var selectedFolderId by remember { mutableStateOf(folders.firstOrNull()?.id ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "🌐 Жылдам Аудармашы") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = englishWord,
+                    onValueChange = { englishWord = it },
+                    label = { Text("Ағылшынша сөз") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = kazakhWord,
+                    onValueChange = { kazakhWord = it },
+                    label = { Text("Қазақша аудармасы") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (folders.isNotEmpty()) {
+                    Text(
+                        text = "Сақталатын папканы таңдаңыз:",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    folders.forEach { folder ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedFolderId = folder.id }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            RadioButton(
+                                selected = selectedFolderId == folder.id,
+                                onClick = { selectedFolderId = folder.id }
+                            )
+                            Text(text = folder.name, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (englishWord.isNotBlank() && kazakhWord.isNotBlank() && selectedFolderId.isNotBlank()) {
+                        onSaveToFolder(selectedFolderId, englishWord.trim(), kazakhWord.trim())
+                    }
+                },
+                enabled = englishWord.isNotBlank() && kazakhWord.isNotBlank() && selectedFolderId.isNotBlank()
+            ) {
+                Text("Папкаға сақтау 📁")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Бас тарту")
+            }
+        }
+    )
 }
 
 @Composable

@@ -1,5 +1,10 @@
 package com.example.myapplication.ui.screens
 
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -9,11 +14,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -41,12 +48,32 @@ fun MemorizeScreen(
     var isFlipped by remember { mutableStateOf(false) }
     var isFinished by remember { mutableStateOf(false) }
 
+    var speechFeedback by remember { mutableStateOf<String?>(null) }
+    var speechResultColor by remember { mutableStateOf(Color.Gray) }
+
     if (folder == null || initialWords.isEmpty()) {
         LaunchedEffect(Unit) { onBackClick() }
         return
     }
 
     val currentWord = if (currentIndex < initialWords.size) initialWords[currentIndex] else null
+
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull() ?: ""
+            if (spokenText.isNotBlank() && currentWord != null) {
+                if (spokenText.trim().equals(currentWord.english.trim(), ignoreCase = true)) {
+                    speechFeedback = "Өте жақсы! Дұрыс айтылды 🎯 ($spokenText)"
+                    speechResultColor = Color(0xFF059669)
+                } else {
+                    speechFeedback = "Естілгені: '$spokenText' (Қайталап айтып көріңіз 🎙️)"
+                    speechResultColor = Color(0xFFD97706)
+                }
+            }
+        }
+    }
 
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
@@ -102,6 +129,7 @@ fun MemorizeScreen(
                             currentIndex = 0
                             isFlipped = false
                             isFinished = false
+                            speechFeedback = null
                         },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.height(48.dp)
@@ -130,7 +158,7 @@ fun MemorizeScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Flashcard
                 Card(
@@ -141,7 +169,10 @@ fun MemorizeScreen(
                             rotationY = rotation
                             cameraDistance = 12 * density
                         }
-                        .clickable { isFlipped = !isFlipped },
+                        .clickable {
+                            isFlipped = !isFlipped
+                            speechFeedback = null
+                        },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isFlipped) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
@@ -174,7 +205,7 @@ fun MemorizeScreen(
                                     )
                                     IconButton(
                                         onClick = { ttsHelper.speak(currentWord.english) },
-                                        modifier = Modifier.padding(start = 4.dp)
+                                        modifier = Modifier.padding(start = 2.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
@@ -182,9 +213,36 @@ fun MemorizeScreen(
                                             tint = MaterialTheme.colorScheme.primary
                                         )
                                     }
+                                    IconButton(
+                                        onClick = {
+                                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Ағылшынша сөзді айтыңыз: ${currentWord.english}")
+                                            }
+                                            speechLauncher.launch(intent)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Mic,
+                                            contentDescription = "Айтылуды тексеру",
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
                                 }
 
-                                Spacer(modifier = Modifier.height(20.dp))
+                                if (speechFeedback != null) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = speechFeedback!!,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = speechResultColor,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = "💡 Төңкеру үшін карточканы басыңыз",
                                     style = MaterialTheme.typography.bodySmall,
@@ -234,6 +292,7 @@ fun MemorizeScreen(
                     OutlinedButton(
                         onClick = {
                             isFlipped = false
+                            speechFeedback = null
                             if (currentIndex + 1 < initialWords.size) {
                                 currentIndex++
                             } else {
@@ -252,6 +311,7 @@ fun MemorizeScreen(
                         onClick = {
                             repository.toggleWordLearned(currentWord.id)
                             isFlipped = false
+                            speechFeedback = null
                             if (currentIndex + 1 < initialWords.size) {
                                 currentIndex++
                             } else {

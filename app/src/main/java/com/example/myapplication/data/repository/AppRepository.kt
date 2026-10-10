@@ -30,7 +30,7 @@ class AppRepository private constructor(context: Context) {
     }
 
     // ----------------------------------------------------------------
-    // Session & User
+    // Session, User & Settings
     // ----------------------------------------------------------------
 
     fun getCurrentUserId(): String? {
@@ -55,6 +55,14 @@ class AppRepository private constructor(context: Context) {
     private fun saveUsers(users: List<User>) {
         val json = gson.toJson(users)
         prefs.edit().putString("users_list", json).apply()
+    }
+
+    fun getThemeMode(): String {
+        return prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+    }
+
+    fun setThemeMode(mode: String) {
+        prefs.edit().putString("theme_mode", mode).apply()
     }
 
     fun registerUser(name: String, email: String, passwordHash: String): Result<User> {
@@ -192,13 +200,14 @@ class AppRepository private constructor(context: Context) {
         return getAllWords().filter { it.folderId == folderId }
     }
 
-    fun addWord(folderId: String, english: String, kazakh: String, exampleSentence: String = ""): Word {
+    fun addWord(folderId: String, english: String, kazakh: String, phonetic: String = "", exampleSentence: String = ""): Word {
         val allWords = getAllWords().toMutableList()
         val newWord = Word(
             id = UUID.randomUUID().toString(),
             folderId = folderId,
             english = english,
             kazakh = kazakh,
+            phonetic = phonetic,
             exampleSentence = exampleSentence
         )
         allWords.add(newWord)
@@ -254,16 +263,16 @@ class AppRepository private constructor(context: Context) {
         allFolders.add(f2)
 
         // Sample words for f1
-        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Hello", "Сәлем", "Hello, how are you?"))
-        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Friend", "Дос", "She is my best friend."))
-        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Success", "Табыс / Сәттілік", "I wish you success."))
-        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Knowledge", "Білім", "Knowledge is power."))
-        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Opportunity", "Мүмкіндік", "Don't miss this opportunity."))
+        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Hello", "Сәлем", "[həˈloʊ]", "Hello, how are you?"))
+        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Friend", "Дос", "[frɛnd]", "She is my best friend."))
+        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Success", "Табыс / Сәттілік", "[səkˈsɛs]", "I wish you success."))
+        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Knowledge", "Білім", "[ˈnɑːlɪdʒ]", "Knowledge is power."))
+        allWords.add(Word(UUID.randomUUID().toString(), f1.id, "Opportunity", "Мүмкіндік", "[ˌɑːpərˈtuːnəti]", "Don't miss this opportunity."))
 
         // Sample words for f2
-        allWords.add(Word(UUID.randomUUID().toString(), f2.id, "Airport", "Әуежай", "We arrived at the airport."))
-        allWords.add(Word(UUID.randomUUID().toString(), f2.id, "Hotel", "Қонақ үй", "The hotel was very comfortable."))
-        allWords.add(Word(UUID.randomUUID().toString(), f2.id, "Ticket", "Билет", "I bought a flight ticket."))
+        allWords.add(Word(UUID.randomUUID().toString(), f2.id, "Airport", "Әуежай", "[ˈɛər.pɔːt]", "We arrived at the airport."))
+        allWords.add(Word(UUID.randomUUID().toString(), f2.id, "Hotel", "Қонақ үй", "[hoʊˈtɛl]", "The hotel was very comfortable."))
+        allWords.add(Word(UUID.randomUUID().toString(), f2.id, "Ticket", "Билет", "[ˈtɪk.ɪt]", "I bought a flight ticket."))
 
         saveAllFolders(allFolders)
         saveAllWords(allWords)

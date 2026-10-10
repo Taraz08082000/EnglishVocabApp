@@ -10,7 +10,11 @@ import com.example.myapplication.data.repository.AppRepository
 import com.example.myapplication.ui.screens.*
 
 @Composable
-fun AppNavGraph(repository: AppRepository) {
+fun AppNavGraph(
+    repository: AppRepository,
+    themeMode: String = "SYSTEM",
+    onThemeChange: (String) -> Unit = {}
+) {
     val navController = rememberNavController()
     val isLoggedIn = repository.getCurrentUserId() != null
     val startDestination = if (isLoggedIn) "folders" else "register"
@@ -70,7 +74,8 @@ fun AppNavGraph(repository: AppRepository) {
                 folderId = folderId,
                 onBackClick = { navController.popBackStack() },
                 onStartMemorizeClick = { fId -> navController.navigate("memorize/$fId") },
-                onStartTestClick = { fId -> navController.navigate("test/$fId") }
+                onStartTestClick = { fId -> navController.navigate("test/$fId") },
+                onStartMatchGameClick = { fId -> navController.navigate("match_game/$fId") }
             )
         }
 
@@ -98,9 +103,23 @@ fun AppNavGraph(repository: AppRepository) {
             )
         }
 
+        composable(
+            route = "match_game/{folderId}",
+            arguments = listOf(navArgument("folderId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val folderId = backStackEntry.arguments?.getString("folderId") ?: ""
+            MatchGameScreen(
+                repository = repository,
+                folderId = folderId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
         composable("profile") {
             ProfileScreen(
                 repository = repository,
+                themeMode = themeMode,
+                onThemeChange = onThemeChange,
                 onBackClick = { navController.popBackStack() },
                 onLogoutClick = {
                     navController.navigate("login") {

@@ -5,6 +5,7 @@ data class Word(
     val folderId: String,
     val english: String,
     val kazakh: String,
+    val phonetic: String = "",
     val exampleSentence: String = "",
     val isLearned: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
